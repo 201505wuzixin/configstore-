@@ -1,120 +1,151 @@
 'use strict';
 const path = require('path');  
 //Path对象，用于处理目录的对象 //方法：路径合并 path.join([path1], [path2], […])  
+
 const os = require('os');  
 //os 模块提供了一些基本的系统操作函数   
-//方法：1. os.tmpdir()  
-          返回操作系统的默认临时文件夹。  
-       2.os.hostname()  
-          返回操作系统的主机名。  
-       3.os.type()  
-          返回操作系统名  
+//方法：   os.tmpdir()  
+          返回操作系统的默认临时文件夹。   
+
 const fs = require('graceful-fs');  
 //引入文件模块
+
 const makeDir = require('make-dir');
 //引入新建文件夹的模块
+
 const xdgBasedir = require('xdg-basedir');
-//不明白
+
+
 const writeFileAtomic = require('write-file-atomic');
-//这是节点的扩展fs.writeFile，使其操作原子化，并允许您设置所有权（文件的uid/gid）
-//方法：writeFileAtomic（filename，data，[options]，callback）
+//是fs.writeFile节点的扩展，写入文件模块。  
+//writeFileAtomic（filename，data，[options]，callback）把data写入文件中  
+
 const dotProp = require('dot-prop');
 //通过一些扩展名的点支持访问属性的方法。
+
 const uniqueString = require('unique-string');
-//返回给定输入字符串作为前缀的唯一字符串。
+//返回一个前缀唯一的字符串
+
 const configDir = xdgBasedir.config || path.join(os.tmpdir(), uniqueString());
-//xdgbasedir配置或者路径合并path.join（返回操作系统的默认临时文件夹，返回给定输入字符串作为前缀的唯一字符串）
+
+
 const permissionError = 'You don\'t have access to this file.';
 //您没有访问此文件的权限。
+
 const makeDirOptions = {mode: 0o0700};/新建文件对象
 const writeFileOptions = {mode: 0o0600};/写文件对象
-//mode命令用于配置系统设备
 
-class Configstore { //定义configstore类
-	constructor(id, defaults, opts) {//引入构造器
-		opts = opts || {};
-    
+//自定义configstore模块
+class Configstore { 
+	constructor(id, defaults, opts) {
+		opts = opts || {}; //参数为用户传入对象或为{}空
+		
 		const pathPrefix = opts.globalConfigPath ? path.join(id, 'config.json') : path.join('configstore', `${id}.json`);
-    //全局配置文件的路径如果不为空，路径就为当前进程id的默认配置文件路径；否则为当前定义类的id的路径
+    //传入对象，匹配文件路径的开头部分
     
 		this.path = path.join(configDir, pathPrefix);
-    //合并路径
+    //把文件夹的路径以及文件开头部分的路径合并，返回当前文件路径
 		this.all = Object.assign({}, defaults, this.all);
-    //对this.all进行拷贝
+    //把用户传入的对象拷贝到this.all中，合并操作。
 	}
-  
-	get all() { // 获取值
+	
+  	//获取所有配置（属性）
+	get all() {
 		try {
 			return JSON.parse(fs.readFileSync(this.path, 'utf8')); 
-      // 把JSON字符串转换为对象（文件路径）
-		} catch (err) { //捕获错误
+      			//读取文件内容，并把它转化成JSON对象形式
+		} catch (err) { 
+		//捕获错误，出错后的处理
 			// Create dir if it doesn't exist //创建目录，如果它不存在
 			if (err.code === 'ENOENT') {//没找到文件或路径
-				makeDir.sync(path.dirname(this.path), makeDirOptions); 创建目录
+				makeDir.sync(path.dirname(this.path), makeDirOptions); 
+				//根据路径创建目录
 				return {};
 			}
 
 			// Improve the message of permission errors //改进许可错误的消息
 			if (err.code === 'EACCES') {//权限被拒绝
 				err.message = `${err.message}\n${permissionError}\n`;
+				//提示错误信息
 			}
 
 			// Empty the file if it encounters invalid JSON //如果文件遇到无效的JSON，请将其清空
 			if (err.name === 'SyntaxError') {//语法错误
 				writeFileAtomic.sync(this.path, '', writeFileOptions);
-				//以同步的方式把'空'写入文件
+				//把''空信息写入到文件中，即将其清空
 				return {};
 			}
 
 			throw err;//抛出错误
 		}
 	}
-	set all(val) { //写入属性
+	
+	//用对象替代当前配置属性
+	set all(val) { 
 		try {
 			// Make sure the folder exists as it could have been deleted in the meantime
-      // 确保文件夹存在，因为在此期间它可能已被删除
+      			// 确保文件夹存在，因为在此期间它可能已被删除
 			makeDir.sync(path.dirname(this.path), makeDirOptions);
-			//返回path的目录
+			//根据路径信息，创建目录
 			writeFileAtomic.sync(this.path, JSON.stringify(val, null, '\t'), writeFileOptions);
-			// 把JavaScript 值转换为 JSON 字符串 然后传入到path中
+			//把JSON字符串的值都写入到文件中
 		} catch (err) {
 			// Improve the message of permission errors //改进许可错误的消息
-			if (err.code === 'EACCES') {
+			if (err.code === 'EACCES') {//如果权限被拒绝
 				err.message = `${err.message}\n${permissionError}\n`;
+				//提示错误信息
 			}
-
 			throw err;
 		}
 	}
-	get size() { 获取属性值的长度
+	
+	//获取配置属性的长度
+	get size() { 
 		return Object.keys(this.all || {}).length;
+		//返回包含自身可枚举属性的字符串数组 用length方法获取长度
 	}
-	get(key) { 获取属性值
+	
+	//获取属性的值
+	get(key) { 
 		return dotProp.get(this.all, key);
+		//用.get的方式来访问属性
 	}
-	set(key, val) { 设置属性及属性值
+	
+	//写入属性及属性值
+	set(key, val) { 
 		const config = this.all;
 
-		if (arguments.length === 1) { //函数调用时传入函数的实参数量
+		if (arguments.length === 1) {//如果写入的是一个对象
 			for (const k of Object.keys(key)) {
 				dotProp.set(config, k, key[k]);
+				//通过遍历的方式将其写入
 			}
 		} else {
 			dotProp.set(config, key, val);
+			//如果只是一个键值对的话，就用.set方式将其写入
 		}
 
 		this.all = config;
 	}
-	has(key) { //判断是否包含某属性值
+	
+	//判断是否包含某属性值
+	has(key) { 
 		return dotProp.has(this.all, key);
+		//用.has的方式来判断是否包含某属性值
 	}
-	delete(key) { //删除属性及属性值
+	
+	//删除属性及其属性值
+	delete(key) { 
 		const config = this.all;
 		dotProp.delete(config, key);
+		//用.delete的方式来删除某一属性
 		this.all = config;
 	}
-	clear() { 清除程序
+	
+	//清除配置属性
+	clear() {
 		this.all = {};
+		//将其赋为{}来清空
 	}
 }
 

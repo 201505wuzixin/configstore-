@@ -32,8 +32,8 @@ const configDir = xdgBasedir.config || path.join(os.tmpdir(), uniqueString());
 const permissionError = 'You don\'t have access to this file.';
 //您没有访问此文件的权限。
 
-const makeDirOptions = {mode: 0o0700};/新建文件对象
-const writeFileOptions = {mode: 0o0600};/写文件对象
+const makeDirOptions = {mode: 0o0700};//新建文件
+const writeFileOptions = {mode: 0o0600};//写入文件
 
 //自定义configstore模块
 class Configstore { 

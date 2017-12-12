@@ -1,6 +1,6 @@
 'use strict';
 const path = require('path');  
-//Path对象，用于处理目录的对象 //方法：路径合并 path.join([path1], [path2], […])  
+//Path模块，用于处理目录的模块 //方法：路径合并 path.join([path1], [path2], […])  
 
 const os = require('os');  
 //os 模块提供了一些基本的系统操作函数   

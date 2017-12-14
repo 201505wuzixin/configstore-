@@ -4,7 +4,7 @@ Easily load and persist config without having to think about where and how
 //轻松加载 并且 保存配置信息 不用考虑在哪里以及如何  
 
 Config is stored in a JSON file located in $XDG_CONFIG_HOME or (~ /.config.)  
-//configstore配置存储的路径 在$XDG_CONFIG_HOME或者是在~/.config中的JSON文件中
+//配置存储的路径 在$XDG_CONFIG_HOME或者是在~/.config中的JSON文件中
 
 Example: (~/.config/configstore/some-id.json)   
 //例如 此路径
